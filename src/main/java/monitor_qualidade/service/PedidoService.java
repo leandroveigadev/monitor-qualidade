@@ -1,5 +1,6 @@
 package monitor_qualidade.service;
 
+import monitor_qualidade.metrics.IndicadoresComerciaisMetrics;
 import monitor_qualidade.model.Pedido;
 import monitor_qualidade.model.PedidoStatusHistorico;
 import monitor_qualidade.repository.PedidoRepository;
@@ -14,15 +15,18 @@ public class PedidoService {
 
     private final PedidoRepository repository;
     private final PedidoStatusHistoricoRepository historicoRepository;
+    private final IndicadoresComerciaisMetrics metrics;
 
-    public PedidoService(PedidoRepository repository, PedidoStatusHistoricoRepository historicoRepository) {
+    // Injeção de dependência atualizada com o IndicadoresComerciaisMetrics
+    public PedidoService(PedidoRepository repository, PedidoStatusHistoricoRepository historicoRepository, IndicadoresComerciaisMetrics metrics) {
         this.repository = repository;
         this.historicoRepository = historicoRepository;
+        this.metrics = metrics;
     }
 
     @Transactional
     public Pedido processarPedido(String canalOrigem, String codigoExterno, String novoStatusMarketplace) {
-        // Passo A: Busca se o pedido já existe para descobrir o status anterior (Auditoria)
+        // Busca se o pedido já existe para descobrir o status anterior (Auditoria)
         Pedido pedido = repository.findByCodigoPedidoExterno(codigoExterno)
                 .orElseGet(() -> {
                     // Se não existe, cria um novo objeto base
@@ -40,16 +44,28 @@ public class PedidoService {
             statusAntigo = "CRIADO";
         }
 
-        // Passo B: Atualiza o status vindo do marketplace e recalcula divergências
+        // Atualiza o status vindo do marketplace e recalcula divergências
         pedido.setStatusMarketplace(novoStatusMarketplace);
         pedido.setUltimaAtualizacao(LocalDateTime.now());
         pedido.avaliarDivergencia();
 
-        // Passo C: Salva o pedido oficial
+        // Salva o pedido oficial
         Pedido pedidoSalvo = repository.save(pedido);
 
-        // Passo D: Dispara a auditoria de mudança de status (Event Sourcing)
+        // Dispara a auditoria de mudança de status (Event Sourcing)
         registrarHistoricoDeStatus(pedidoSalvo, statusAntigo, novoStatusMarketplace, "Webhook: " + canalOrigem);
+
+        // GATILHOS PARA O GRAFANA (Área Comercial)
+
+        // Registra +1 no volume total de pedidos processados
+        metrics.registrarPedidoProcessado();
+
+        // Registra +1 se o motor de regras detectou divergência
+        // Nota: Assumi que a classe Pedido possui o metodo 'isDivergente()'.
+
+        if (pedidoSalvo.isDivergente()) {
+            metrics.registrarDivergencia();
+        }
 
         return pedidoSalvo;
     }

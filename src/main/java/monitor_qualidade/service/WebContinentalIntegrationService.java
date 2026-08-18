@@ -1,6 +1,7 @@
 package monitor_qualidade.service;
 
 import monitor_qualidade.dto.WebContinentalPedidoDTO;
+import monitor_qualidade.metrics.IndicadoresComerciaisMetrics; // <-- Importação nova
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,22 +16,17 @@ public class WebContinentalIntegrationService {
     private static final Logger log = LoggerFactory.getLogger(WebContinentalIntegrationService.class);
 
     private final RestClient restClient;
+    private final IndicadoresComerciaisMetrics metrics; // <-- Declaramos a dependência das métricas
 
-    // Injeção de dependência via construtor chamando o Bean que criamos no Passo 1
-    public WebContinentalIntegrationService(RestClient webContinentalRestClient) {
+    // Padrão Sênior: Injetamos as métricas pelo construtor
+    public WebContinentalIntegrationService(RestClient webContinentalRestClient, IndicadoresComerciaisMetrics metrics) {
         this.restClient = webContinentalRestClient;
+        this.metrics = metrics;
     }
 
-    /**
-     * Consulta o status atualizado de um pedido diretamente na API da Web Continental.
-     * Retorna um Optional para proteger o sistema em caso de falha de comunicação.
-     */
     public Optional<WebContinentalPedidoDTO> buscarPedidoNaWebContinental(String codigoPedidoExterno) {
         try {
-            // URL fictícia de Sandbox.
-            // Quando a documentação oficial da Web Continental for fornecida, ajustamos aqui.
             String url = "https://api.sandbox.webcontinental.com.br/v1/pedidos/" + codigoPedidoExterno;
-
             log.info("Consultando pedido [{}] ativamente na API da Web Continental...", codigoPedidoExterno);
 
             WebContinentalPedidoDTO resposta = restClient.get()
@@ -42,9 +38,12 @@ public class WebContinentalIntegrationService {
             return Optional.ofNullable(resposta);
 
         } catch (RestClientException e) {
-            // Blindagem: Logamos o erro com clareza para a auditoria, mas retornamos vazio para não travar a thread.
             log.error("Gargalo Operacional: Falha ao consultar o pedido [{}] na Web Continental. Motivo: {}",
                     codigoPedidoExterno, e.getMessage());
+
+            // DISPARO DA MÉTRICA: Avisa o Prometheus/Grafana que houve uma falha!
+            metrics.registrarFalhaIntegracao();
+
             return Optional.empty();
         }
     }
