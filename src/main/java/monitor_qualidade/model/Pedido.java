@@ -48,7 +48,7 @@ public class Pedido {
         this.avaliarDivergencia();
     }
 
-    // --- Automação Sênior: Atualiza a data automaticamente no banco ---
+    // Atualiza a data automaticamente no banco
     @PrePersist
     protected void onCreate() {
         this.ultimaAtualizacao = LocalDateTime.now();
@@ -59,7 +59,7 @@ public class Pedido {
         this.ultimaAtualizacao = LocalDateTime.now();
     }
 
-    // Regra de negócio sênior: Motor interno que detecta se os status batem
+    // Regra de negócio Motor interno que detecta se os status batem
     public void avaliarDivergencia() {
         if (statusMarketplace == null || statusErp == null) {
             this.divergente = true;
