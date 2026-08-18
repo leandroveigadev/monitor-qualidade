@@ -1,0 +1,56 @@
+### Aplicação e Maven ###
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### SEGURANÇA E SEGREDOS (Crítico) ###
+# Variáveis de ambiente e senhas
+.env
+*.env
+.env.*
+*.properties.local
+
+### Logs ###
+# Evita subir gigabytes de arquivos de texto de log para o repositório
+*.log
+
+### Arquivos de Sistema Operacional ###
+# Mantém o repositório limpo de arquivos ocultos do Windows e macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/

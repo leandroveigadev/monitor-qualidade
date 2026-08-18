@@ -1,0 +1,18 @@
+global:
+  # Frequência da auditoria: ideal para acompanhamento "Near Real-Time" de SLAs
+  scrape_interval: 10s
+  # Segurança anti-travamento: se o Java não responder em 5s, o Prometheus cancela a tentativa
+  scrape_timeout: 5s
+
+scrape_configs:
+  # 1. Auto-auditoria do próprio Prometheus (Padrão DevOps)
+  - job_name: 'prometheus-self-monitor'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # 2. Auditoria da Aplicação Spring Boot (Sua regra de negócio)
+  - job_name: 'monitor-qualidade-java'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      # O túnel de comunicação do Docker para a máquina local (Porta 8081)
+      - targets: ['172.17.0.1:8081']

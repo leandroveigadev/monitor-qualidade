@@ -1,0 +1,39 @@
+services:
+  # Banco de dados gerenciado por Volume Nomeado (Padrão Oficial)
+  db:
+    image: postgres:15
+    container_name: monitor_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # Coletor de Métricas com configuração mapeada
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus_config:/etc/prometheus
+
+  # Painel de Controle com volume nomeado para dados internos e bind mount para os dashboards JSON
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana_dashboards:/var/lib/grafana/dashboards
+
+volumes:
+  pgdata:
+  grafana_data:
