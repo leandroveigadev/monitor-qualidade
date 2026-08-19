@@ -1,7 +1,7 @@
 package monitor_qualidade.service;
 
 import monitor_qualidade.dto.WebContinentalPedidoDTO;
-import monitor_qualidade.metrics.IndicadoresComerciaisMetrics; // <-- Importação nova
+import monitor_qualidade.metrics.IndicadoresComerciaisMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -16,9 +16,9 @@ public class WebContinentalIntegrationService {
     private static final Logger log = LoggerFactory.getLogger(WebContinentalIntegrationService.class);
 
     private final RestClient restClient;
-    private final IndicadoresComerciaisMetrics metrics; // <-- Declaramos a dependência das métricas
+    private final IndicadoresComerciaisMetrics metrics;
 
-    // Padrão Sênior: Injetamos as métricas pelo construtor
+    // Injeta as métricas pelo construtor
     public WebContinentalIntegrationService(RestClient webContinentalRestClient, IndicadoresComerciaisMetrics metrics) {
         this.restClient = webContinentalRestClient;
         this.metrics = metrics;
@@ -35,13 +35,17 @@ public class WebContinentalIntegrationService {
                     .body(WebContinentalPedidoDTO.class);
 
             log.info("Consulta do pedido [{}] realizada com sucesso.", codigoPedidoExterno);
-            return Optional.ofNullable(resposta);
+
+            // DISPARO DA MÉTRICA DE SUCESSO: Avisa o Prometheus/Grafana que a API externa respondeu bem!
+            metrics.registrarSucessoIntegracao();
+
+            return Optional.empty(); // (ou return Optional.ofNullable(resposta); conforme regra atual)
 
         } catch (RestClientException e) {
             log.error("Gargalo Operacional: Falha ao consultar o pedido [{}] na Web Continental. Motivo: {}",
                     codigoPedidoExterno, e.getMessage());
 
-            // DISPARO DA MÉTRICA: Avisa o Prometheus/Grafana que houve uma falha!
+            // Disparo da métrica de falha. Avisa o Prometheus/Grafana que houve um erro!
             metrics.registrarFalhaIntegracao();
 
             return Optional.empty();

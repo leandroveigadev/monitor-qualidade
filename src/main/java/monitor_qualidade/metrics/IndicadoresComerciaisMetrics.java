@@ -10,23 +10,25 @@ public class IndicadoresComerciaisMetrics {
     private final Counter pedidosProcessadosCounter;
     private final Counter divergenciasEncontradasCounter;
     private final Counter falhasIntegracaoCounter;
+    private final Counter sucessoIntegracaoCounter;
 
-    // Injeção via construtor do MeterRegistry (o motor do Micrometer/Prometheus)
     public IndicadoresComerciaisMetrics(MeterRegistry registry) {
 
-        // Métrica 1: Volume total de pedidos que passaram pelo sistema
         this.pedidosProcessadosCounter = Counter.builder("comercial_pedidos_processados_total")
                 .description("Total de pedidos processados pelo motor de reconciliacao")
                 .register(registry);
 
-        // Métrica 2: O termômetro de problemas (Divergências ERP vs Web Continental)
         this.divergenciasEncontradasCounter = Counter.builder("comercial_pedidos_divergentes_total")
                 .description("Total de pedidos com divergencia detectada")
                 .register(registry);
 
-        // Métrica 3: Gargalos de infraestrutura externa
         this.falhasIntegracaoCounter = Counter.builder("comercial_falhas_integracao_total")
                 .description("Total de falhas de comunicacao com a API da Web Continental")
+                .register(registry);
+
+        // Novo indicador para medir a taxa de sucesso da integração
+        this.sucessoIntegracaoCounter = Counter.builder("comercial_sucesso_integracao_total")
+                .description("Total de consultas bem sucedidas na API da Web Continental")
                 .register(registry);
     }
 
@@ -40,5 +42,10 @@ public class IndicadoresComerciaisMetrics {
 
     public void registrarFalhaIntegracao() {
         this.falhasIntegracaoCounter.increment();
+    }
+
+    // Novo metodo de registro de sucesso
+    public void registrarSucessoIntegracao() {
+        this.sucessoIntegracaoCounter.increment();
     }
 }
