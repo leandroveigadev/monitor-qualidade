@@ -36,17 +36,24 @@ public class WebContinentalIntegrationService {
 
             log.info("Consulta do pedido [{}] realizada com sucesso.", codigoPedidoExterno);
 
-            // DISPARO DA MÉTRICA DE SUCESSO: Avisa o Prometheus/Grafana que a API externa respondeu bem!
+            // Avisa o Prometheus/Grafana que a API externa respondeu bem!
             metrics.registrarSucessoIntegracao();
 
             return Optional.empty(); // (ou return Optional.ofNullable(resposta); conforme regra atual)
 
         } catch (RestClientException e) {
-            log.error("Gargalo Operacional: Falha ao consultar o pedido [{}] na Web Continental. Motivo: {}",
-                    codigoPedidoExterno, e.getMessage());
+            // Extrai o nome da exceção para a tag dinâmica do Grafana (ex: HttpClientErrorException)
+            String motivo = e.getClass().getSimpleName();
 
-            // Disparo da métrica de falha. Avisa o Prometheus/Grafana que houve um erro!
-            metrics.registrarFalhaIntegracao();
+            // Simula o valor financeiro do pedido (em produção, você pegaria isso do JSON)
+            double valorHipoteticoDoPedido = 1500.50;
+
+            // Log Usa o MDC para puxar o Correlation ID de rastreio
+            log.error("[Pedido-Rastreio: {}] Gargalo Operacional: Falha ao consultar o pedido {} na Web Continental. Motivo: {}",
+                    org.slf4j.MDC.get("correlationId"), codigoPedidoExterno, e.getMessage());
+
+            // Disparo da métrica com os 3 argumentos que o IntelliJ estava pedindo!
+            metrics.registrarFalhaIntegracao("WEB_CONTINENTAL", motivo, valorHipoteticoDoPedido);
 
             return Optional.empty();
         }

@@ -7,12 +7,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class IndicadoresComerciaisMetrics {
 
+    private final MeterRegistry registry; // Adicionado para gerarmos tags dinâmicas
     private final Counter pedidosProcessadosCounter;
     private final Counter divergenciasEncontradasCounter;
-    private final Counter falhasIntegracaoCounter;
     private final Counter sucessoIntegracaoCounter;
 
     public IndicadoresComerciaisMetrics(MeterRegistry registry) {
+        this.registry = registry;
 
         this.pedidosProcessadosCounter = Counter.builder("comercial_pedidos_processados_total")
                 .description("Total de pedidos processados pelo motor de reconciliacao")
@@ -22,14 +23,12 @@ public class IndicadoresComerciaisMetrics {
                 .description("Total de pedidos com divergencia detectada")
                 .register(registry);
 
-        this.falhasIntegracaoCounter = Counter.builder("comercial_falhas_integracao_total")
-                .description("Total de falhas de comunicacao com a API da Web Continental")
-                .register(registry);
-
-        // Novo indicador para medir a taxa de sucesso da integração
         this.sucessoIntegracaoCounter = Counter.builder("comercial_sucesso_integracao_total")
                 .description("Total de consultas bem sucedidas na API da Web Continental")
                 .register(registry);
+
+        // Nota: O falhasIntegracaoCounter foi removido daqui do construtor,
+        // pois agora ele é criado dinamicamente no metodo abaixo para aceitar as tags.
     }
 
     public void registrarPedidoProcessado() {
@@ -40,12 +39,22 @@ public class IndicadoresComerciaisMetrics {
         this.divergenciasEncontradasCounter.increment();
     }
 
-    public void registrarFalhaIntegracao() {
-        this.falhasIntegracaoCounter.increment();
-    }
-
-    // Novo metodo de registro de sucesso
     public void registrarSucessoIntegracao() {
         this.sucessoIntegracaoCounter.increment();
+    }
+
+    // Substitui o antigo registrarFalhaIntegracao()
+    public void registrarFalhaIntegracao(String canal, String motivoErro, double valorPerdido) {
+
+        // Registra a falha, mas agora anexa o motivo exato (ex: 404, Timeout)
+        registry.counter("comercial_falhas_integracao_total",
+                        "canal", canal,
+                        "motivo", motivoErro)
+                .increment();
+
+        // Nova metrica, soma o valor em R$ do pedido que falhou
+        registry.counter("comercial_risco_financeiro_total",
+                        "canal", canal)
+                .increment(valorPerdido);
     }
 }

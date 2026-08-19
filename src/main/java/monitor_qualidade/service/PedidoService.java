@@ -16,16 +16,29 @@ public class PedidoService {
     private final PedidoRepository repository;
     private final PedidoStatusHistoricoRepository historicoRepository;
     private final IndicadoresComerciaisMetrics metrics;
+    // NOVO: Injeção do serviço de integração
+    private final WebContinentalIntegrationService integracaoService;
 
-    // Injeção de dependência atualizada com o IndicadoresComerciaisMetrics
-    public PedidoService(PedidoRepository repository, PedidoStatusHistoricoRepository historicoRepository, IndicadoresComerciaisMetrics metrics) {
+    // Injeção de dependência atualizada (O Spring cuida de instanciar o serviço para nós)
+    public PedidoService(PedidoRepository repository,
+                         PedidoStatusHistoricoRepository historicoRepository,
+                         IndicadoresComerciaisMetrics metrics,
+                         WebContinentalIntegrationService integracaoService) {
         this.repository = repository;
         this.historicoRepository = historicoRepository;
         this.metrics = metrics;
+        this.integracaoService = integracaoService;
     }
 
     @Transactional
     public Pedido processarPedido(String canalOrigem, String codigoExterno, String novoStatusMarketplace) {
+
+        // NOVO GATILHO DE TESTE: Faz a chamada para a Web Continental antes de salvar
+        // Isso vai forçar o erro e disparar as nossas métricas avançadas e o Correlation ID!
+        if ("WEB_CONTINENTAL".equalsIgnoreCase(canalOrigem)) {
+            integracaoService.buscarPedidoNaWebContinental(codigoExterno);
+        }
+
         // Busca se o pedido já existe para descobrir o status anterior (Auditoria)
         Pedido pedido = repository.findByCodigoPedidoExterno(codigoExterno)
                 .orElseGet(() -> {
@@ -56,13 +69,10 @@ public class PedidoService {
         registrarHistoricoDeStatus(pedidoSalvo, statusAntigo, novoStatusMarketplace, "Webhook: " + canalOrigem);
 
         // GATILHOS PARA O GRAFANA (Área Comercial)
-
         // Registra +1 no volume total de pedidos processados
         metrics.registrarPedidoProcessado();
 
         // Registra +1 se o motor de regras detectou divergência
-        // Nota: Assumi que a classe Pedido possui o metodo 'isDivergente()'.
-
         if (pedidoSalvo.isDivergente()) {
             metrics.registrarDivergencia();
         }
